@@ -1,0 +1,45 @@
+require("dotenv").config();
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const authRoutes = require("./routes/auth");
+const movieRoutes = require("./routes/movies");
+const favouriteRoutes = require("./routes/favourites");
+
+const app = express();
+const PORT = 5000;
+
+app.use(cors({ origin: "http://localhost:3000" }));
+app.use(express.json());
+
+// database connection
+const uri = process.env.MONGO_URI;
+
+const clientOptions = {
+  serverApi: { version: "1", strict: true, deprecationErrors: true },
+};
+
+async function connectDB() {
+  try {
+    await mongoose.connect(uri, clientOptions);
+
+    // optional: the "Ping" command just confirms everything is working
+    await mongoose.connection.db.admin().command({ ping: 1 });
+    console.log("✅ Pinged the db. You successfully connected to MongoDB!");
+  } catch (err) {
+    console.error("❌ Connection failed:", err);
+    process.exit(1);
+  }
+}
+
+// execute the connection function and start server
+connectDB().then(() => {
+  // routes
+  app.use("/api/auth", authRoutes);
+  app.use("/api/movies", movieRoutes);
+  app.use("/api/favourites", favouriteRoutes);
+
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+});
