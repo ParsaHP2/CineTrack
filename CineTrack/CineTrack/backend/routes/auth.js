@@ -45,7 +45,11 @@ router.post("/login", async (req, res) => {
     const secret = process.env.JWT_SECRET;
     if (!secret)
       return res.status(500).json({ message: "Server misconfiguration" });
-    const token = jwt.sign({ id: user._id }, secret, { expiresIn: "1h" });
+    const token = jwt.sign(
+      { id: user._id, username: user.username },
+      secret,
+      { expiresIn: "1h" },
+    );
 
     res.json({ token, user: { id: user._id, username: user.username } });
   } catch (err) {
