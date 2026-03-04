@@ -10,11 +10,14 @@ import "./App.css";
 function App() {
   return (
     <AuthProvider>
+      {/* [Part 2: Router] react-router-dom with public and protected routes */}
       <BrowserRouter>
         <Routes>
+          {/* [Part 2: Public Routes] /login and /register */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          {/* [Part 2: Protected Route] /favourites - redirects to /login if unauthenticated */}
           <Route
             path="/favourites"
             element={

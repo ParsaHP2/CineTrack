@@ -4,20 +4,16 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// Register
+// [Part 1: POST /register] Accepts credentials, hashes password with bcryptjs, saves user
 router.post("/register", async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // 1. check if user already exists
     const existingUser = await User.findOne({ username });
     if (existingUser)
       return res.status(400).json({ message: "User already exists" });
 
-    // 2. hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 3. save the user
     const newUser = new User({ username, password: hashedPassword });
     await newUser.save();
 
@@ -27,24 +23,22 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// Login
+// [Part 1: POST /login] Verifies credentials, returns signed JWT with user's DB ID and username in payload
 router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // 1. find user
     const user = await User.findOne({ username });
     if (!user) return res.status(400).json({ message: "User not found" });
 
-    // 2. compare passwords
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
 
-    // 3. generate Token (The "Wristband")
     const secret = process.env.JWT_SECRET;
     if (!secret)
       return res.status(500).json({ message: "Server misconfiguration" });
+    // JWT payload includes user's database ID and username (assignment requirement)
     const token = jwt.sign(
       { id: user._id, username: user.username },
       secret,

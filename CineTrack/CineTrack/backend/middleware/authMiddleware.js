@@ -1,10 +1,9 @@
 const jwt = require("jsonwebtoken");
 
+// [Part 1: verifyToken middleware] Rejects with 401 if no valid token in Authorization header
 function verifyToken(req, res, next) {
-  // 1. Get token from header
   const token = req.header("Authorization");
 
-  // 2. Check if token exists
   if (!token) return res.status(401).json({ error: "Access denied" });
 
   const secret = process.env.JWT_SECRET;
@@ -16,7 +15,7 @@ function verifyToken(req, res, next) {
     req.userId = decoded.id; // Add user ID to request
     next();
   } catch (error) {
-    res.status(401).json({ error: "Invalid token" });
+    res.status(401).json({ error: "Invalid token" }); // 401 Unauthorized for invalid/expired token
   }
 }
 

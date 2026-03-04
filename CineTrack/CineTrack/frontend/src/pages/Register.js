@@ -11,6 +11,7 @@ export default function Register() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // [Part 2: Registration Form] POST request to backend, handles errors
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);

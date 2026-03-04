@@ -3,7 +3,7 @@ const router = express.Router();
 const Favourite = require("../models/Favourite");
 const verifyToken = require("../middleware/authMiddleware");
 
-// GET my favourites (protected)
+// [Part 1: Protected Domain Routes] verifyToken applied to GET, POST, DELETE - 401 if no valid token
 router.get("/", verifyToken, async (req, res) => {
   try {
     const list = await Favourite.find({ userId: req.userId }).lean();
@@ -13,7 +13,6 @@ router.get("/", verifyToken, async (req, res) => {
   }
 });
 
-// POST add favourite (protected)
 router.post("/", verifyToken, async (req, res) => {
   try {
     const { movieId, title, posterPath, releaseDate } = req.body;
@@ -39,7 +38,6 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 
-// DELETE favourite by movieId (protected)
 router.delete("/:movieId", verifyToken, async (req, res) => {
   try {
     const movieId = Number(req.params.movieId);

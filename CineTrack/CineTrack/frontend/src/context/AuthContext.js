@@ -1,13 +1,14 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
 
+// [Part 2: AuthContext] Manages user's token and decoded user object (assignment requirement)
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
 
-  // Check localStorage on app load to persist login
+  // [Part 2: AuthContext] Checks localStorage on app load so user stays logged in after refresh
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     if (!storedToken) return;
@@ -37,6 +38,7 @@ export function AuthProvider({ children }) {
     setUser(userData);
   };
 
+  // [Part 2: Logout] Clears token from Context and localStorage
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");

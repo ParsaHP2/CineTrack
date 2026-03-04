@@ -47,8 +47,10 @@ export default function Favourites() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // [Part 2: Personalized Greeting] jwt-decode extracts username from token (protected view)
   const username = token ? jwtDecode(token).username : null;
 
+  // [Part 2: Authenticated Requests] Authorization header on GET favourites
   useEffect(() => {
     if (!token) return;
     setLoading(true);
@@ -64,6 +66,7 @@ export default function Favourites() {
       .finally(() => setLoading(false));
   }, [token]);
 
+  // [Part 2: Authenticated Requests] Authorization header on DELETE favourite
   const handleRemove = async (favourite) => {
     try {
       await fetch(`${API_BASE}/api/favourites/${favourite.movieId}`, {
@@ -78,6 +81,7 @@ export default function Favourites() {
     }
   };
 
+  // [Part 2: Logout] Clears token from Context/localStorage, redirects to /login
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });

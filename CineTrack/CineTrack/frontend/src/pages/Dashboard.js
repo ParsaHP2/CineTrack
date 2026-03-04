@@ -51,7 +51,7 @@ export default function Dashboard() {
   const [favouriteIds, setFavouriteIds] = useState(new Set());
   const [error, setError] = useState(null);
 
-  // Personalized greeting: extract username from token using jwt-decode (guests see generic message)
+  // [Part 2: Personalized Greeting] jwt-decode extracts username from token
   const isLoggedIn = Boolean(token);
   const username = isLoggedIn
     ? jwtDecode(token).username
@@ -75,7 +75,7 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Fetch user's favourites
+  // [Part 2: Authenticated Requests] Authorization header on GET favourites
   useEffect(() => {
     if (!token) return;
     fetch(`${API_BASE}/api/favourites`, {
@@ -89,6 +89,7 @@ export default function Dashboard() {
       .catch(() => setFavouriteIds(new Set()));
   }, [token]);
 
+  // [Part 2: Authenticated Requests] Authorization header on create (POST) and delete (DELETE)
   const toggleFavourite = async (movie) => {
     const id = movie.id;
     const isFav = favouriteIds.has(id);
@@ -126,6 +127,7 @@ export default function Dashboard() {
     }
   };
 
+  // [Part 2: Logout] Clears token from Context/localStorage, redirects to public view (login)
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });

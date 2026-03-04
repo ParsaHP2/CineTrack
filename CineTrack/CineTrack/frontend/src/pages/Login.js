@@ -12,6 +12,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // [Part 2: Login Form] POST request to backend, handles errors
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
