@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const verifyToken = require("../middleware/authMiddleware");
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const API_KEY = process.env.TMDB_API_KEY;
@@ -36,6 +37,34 @@ router.get("/trending", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(502).json({ message: "Failed to fetch movies from TMDB" });
+  }
+});
+
+router.post("/", verifyToken, async (req, res) => {
+  try {
+    const { movieId, title, posterPath, releaseDate, rating } = req.body;
+    if (!movieId) return res.status(400).json({ message: "movieId required" });
+
+    const existing = await Favourite.findOne({
+      userId: req.userId,
+      movieId: Number(movieId),
+    });
+
+    if (existing) return res.status(201).json(existing);
+
+    const fav = new Favourite({
+      userId: req.userId,
+      movieId: Number(movieId),
+      title: title || null,
+      posterPath: posterPath || null,
+      releaseDate: releaseDate || null,
+      rating: rating !== undefined ? Number(rating) : null,
+    });
+
+    await fav.save();
+    res.status(201).json(fav);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

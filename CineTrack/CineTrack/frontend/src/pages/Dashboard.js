@@ -6,29 +6,32 @@ import { useAuth } from "../context/AuthContext";
 const API_BASE = "http://localhost:5000";
 const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
 
+//MovieCard
 function MovieCard({ movie, favouriteIds, onToggleFavourite, isLoggedIn }) {
-  const isFav = favouriteIds.has(movie.id);
+  const isFav = favouriteIds.has(movie.id || movie.movieId); // works for TMDB and added movies
   const posterUrl = movie.poster_path
     ? `${POSTER_BASE}${movie.poster_path}`
-    : null;
-  const year = movie.release_date ? movie.release_date.slice(0, 4) : "—";
+    : movie.posterPath || null;
+  const year = movie.release_date
+    ? movie.release_date.slice(0, 4)
+    : movie.releaseDate
+    ? movie.releaseDate.slice(0, 4)
+    : "—";
 
   return (
     <div className="movie-card">
       <div className="movie-poster">
         {posterUrl ? (
-          <img src={posterUrl} alt={movie.title} />
+          <img src={posterUrl} alt={movie.title || "Untitled"} />
         ) : (
           <div className="poster-placeholder">No poster</div>
         )}
         {isLoggedIn && (
           <button
             type="button"
-            className={`favourite-btn ${isFav ? "is-favourite" : ""}`}
+            className={`favourite-btn ${isFav ? "is-favourite" : ""}`} // red if favourite
             onClick={() => onToggleFavourite(movie)}
-            aria-label={
-              isFav ? "Remove from favourites" : "Add to favourites"
-            }
+            aria-label={isFav ? "Remove from favourites" : "Add to favourites"}
             title={isFav ? "Remove from favourites" : "Add to favourites"}
           >
             ♥
@@ -36,13 +39,15 @@ function MovieCard({ movie, favouriteIds, onToggleFavourite, isLoggedIn }) {
         )}
       </div>
       <div className="movie-info">
-        <h3>{movie.title}</h3>
+        <h3>{movie.title || "Untitled"}</h3>
         <p className="movie-year">{year}</p>
+        {movie.username && <p className="movie-username">Added by: {movie.username}</p>}
       </div>
     </div>
   );
 }
 
+//Dashboard
 export default function Dashboard() {
   const { token, user, logout } = useAuth();
   const navigate = useNavigate();
@@ -51,59 +56,58 @@ export default function Dashboard() {
   const [favouriteIds, setFavouriteIds] = useState(new Set());
   const [error, setError] = useState(null);
 
-  // [Part 2: Personalized Greeting] jwt-decode extracts username from token
   const isLoggedIn = Boolean(token);
-  const username = isLoggedIn
-    ? jwtDecode(token).username
-    : user?.username ?? null;
+  const username = isLoggedIn ? jwtDecode(token).username : user?.username ?? null;
 
-  // Fetch trending movies
+  //Fetch trending and favourites
   useEffect(() => {
     setLoading(true);
-    fetch(`${API_BASE}/api/movies/trending`)
-      .then((res) => res.json())
-      .then((data) => {
-        setMovies({
-          classic: data.classic || [],
-          modern: data.modern || [],
+
+    const trendingPromise = fetch(`${API_BASE}/api/movies/trending`).then((res) => res.json());
+
+    const favouritesPromise = token
+      ? fetch(`${API_BASE}/api/favourites`, { headers: { Authorization: token } }).then((res) =>
+          res.json()
+        )
+      : Promise.resolve([]);
+
+    Promise.all([trendingPromise, favouritesPromise])
+      .then(([trendingData, favouriteData]) => {
+        // Split favourites into classic/modern by year
+        const classicFavourites = [];
+        const modernFavourites = [];
+        (favouriteData || []).forEach((movie) => {
+          const year = Number(movie.releaseDate?.slice(0, 4));
+          if (year && year <= 1960) classicFavourites.push(movie);
+          else modernFavourites.push(movie);
         });
+
+        setMovies({
+          classic: [...(trendingData.classic || []), ...classicFavourites],
+          modern: [...(trendingData.modern || []), ...modernFavourites],
+        });
+
+        // set favourite IDs
+        const favIds = new Set((favouriteData || []).map((f) => f.movieId));
+        setFavouriteIds(favIds);
       })
       .catch((err) => {
-        console.error("Error fetching movies:", err);
+        console.error(err);
         setMovies({ classic: [], modern: [] });
+        setFavouriteIds(new Set());
       })
       .finally(() => setLoading(false));
-  }, []);
-
-  // [Part 2: Authenticated Requests] Authorization header on GET favourites
-  useEffect(() => {
-    if (!token) return;
-    fetch(`${API_BASE}/api/favourites`, {
-      headers: { Authorization: token },
-    })
-      .then((res) => res.json())
-      .then((list) => {
-        const ids = new Set((list || []).map((f) => f.movieId));
-        setFavouriteIds(ids);
-      })
-      .catch(() => setFavouriteIds(new Set()));
   }, [token]);
 
-  // [Part 2: Authenticated Requests] Authorization header on create (POST) and delete (DELETE)
+  //Toggle favourite
   const toggleFavourite = async (movie) => {
-    const id = movie.id;
+    const id = movie.id || movie.movieId;
     const isFav = favouriteIds.has(id);
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: token,
-    };
+    const headers = { "Content-Type": "application/json", Authorization: token };
 
     try {
       if (isFav) {
-        await fetch(`${API_BASE}/api/favourites/${id}`, {
-          method: "DELETE",
-          headers: { Authorization: token },
-        });
+        await fetch(`${API_BASE}/api/favourites/${id}`, { method: "DELETE", headers });
         setFavouriteIds((prev) => {
           const next = new Set(prev);
           next.delete(id);
@@ -116,8 +120,9 @@ export default function Dashboard() {
           body: JSON.stringify({
             movieId: id,
             title: movie.title,
-            posterPath: movie.poster_path,
-            releaseDate: movie.release_date,
+            posterPath: movie.poster_path || movie.posterPath || null,
+            releaseDate: movie.release_date || movie.releaseDate || null,
+            username,
           }),
         });
         setFavouriteIds((prev) => new Set([...prev, id]));
@@ -127,7 +132,7 @@ export default function Dashboard() {
     }
   };
 
-  // [Part 2: Logout] Clears token from Context/localStorage, redirects to public view (login)
+  //Logout
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
@@ -139,7 +144,9 @@ export default function Dashboard() {
         <h1>CineTrack</h1>
         {isLoggedIn && (
           <nav className="nav-links">
-            <Link to="/dashboard" className="nav-active">Browse</Link>
+            <Link to="/dashboard" className="nav-active">
+              Browse
+            </Link>
             <Link to="/favourites">My Favourites</Link>
           </nav>
         )}
@@ -149,11 +156,7 @@ export default function Dashboard() {
               <span>
                 Logged in as <strong>{username}</strong>
               </span>
-              <button
-                type="button"
-                className="logout-btn"
-                onClick={handleLogout}
-              >
+              <button type="button" className="logout-btn" onClick={handleLogout}>
                 Logout
               </button>
             </div>
@@ -183,6 +186,7 @@ export default function Dashboard() {
         <h2 className="welcome-greeting">
           {isLoggedIn ? `Welcome, ${username}!` : "Browse movies"}
         </h2>
+
         {loading ? (
           <p className="loading">Loading movies…</p>
         ) : (
@@ -195,7 +199,7 @@ export default function Dashboard() {
                 ) : (
                   movies.classic.map((movie) => (
                     <MovieCard
-                      key={movie.id}
+                      key={movie.id || movie.movieId}
                       movie={movie}
                       favouriteIds={favouriteIds}
                       onToggleFavourite={toggleFavourite}
@@ -205,6 +209,7 @@ export default function Dashboard() {
                 )}
               </div>
             </section>
+
             <section className="movie-section">
               <h2>Modern (1961 – 2025)</h2>
               <div className="movie-grid">
@@ -213,7 +218,7 @@ export default function Dashboard() {
                 ) : (
                   movies.modern.map((movie) => (
                     <MovieCard
-                      key={movie.id}
+                      key={movie.id || movie.movieId}
                       movie={movie}
                       favouriteIds={favouriteIds}
                       onToggleFavourite={toggleFavourite}

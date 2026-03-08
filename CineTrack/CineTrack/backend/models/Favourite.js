@@ -1,21 +1,12 @@
 const mongoose = require("mongoose");
 
-const FavouriteSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  movieId: {
-    type: Number,
-    required: true,
-  },
-  title: { type: String },
-  posterPath: { type: String },
-  releaseDate: { type: String },
+const favouriteSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  movieId: { type: Number, default: null }, 
+  title: { type: String, required: true },
+  posterPath: { type: String, default: null },
+  releaseDate: { type: String, default: null },
+  rating: { type: Number },
 });
 
-// One favourite per user per movie
-FavouriteSchema.index({ userId: 1, movieId: 1 }, { unique: true });
-
-module.exports = mongoose.model("Favourite", FavouriteSchema);
+module.exports = mongoose.model("Favourite", favouriteSchema);

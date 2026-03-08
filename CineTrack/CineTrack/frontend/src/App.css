@@ -137,6 +137,94 @@ html {
   background: rgba(233, 69, 96, 0.35);
 }
 
+.add-movie-btn {
+  display: inline-block;
+  margin: 10px 0 60px;
+  padding: 8px 14px;
+  background: #ff4d4d;
+  color: white;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.popup-overlay{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+.popup{
+background:#1a1a2e;
+border:1px solid #2a2a4a;
+padding:25px;
+border-radius:10px;
+width:340px;
+display:flex;
+flex-direction:column;
+gap:12px;
+box-shadow:0 10px 40px rgba(0,0,0,0.6);
+}
+
+.popup input{
+padding:8px 12px;
+border:1px solid #2a2a4a;
+border-radius:6px;
+font-size:0.9rem;
+background:#0f0f1a;
+color:#e8e8e8;
+}
+
+.popup input::placeholder{
+color:#6b6b8a;
+}
+
+.popup input:focus{
+outline:none;
+border-color:#e94560;
+}
+
+.popup-buttons{
+display:flex;
+justify-content:space-between;
+margin-top:10px;
+}
+
+.popup-buttons button{
+padding:8px 14px;
+border-radius:6px;
+border:none;
+font-weight:600;
+cursor:pointer;
+font-size:0.85rem;
+}
+
+.popup-buttons button:first-child{
+background:#e94560;
+color:white;
+}
+
+.popup-buttons button:first-child:hover{
+background:#c73e54;
+}
+
+.popup-buttons button:last-child{
+background:transparent;
+border:1px solid #4a4a6a;
+color:#8b8ba8;
+}
+
+.popup-buttons button:last-child:hover{
+background:rgba(255,255,255,0.05);
+color:#b8b8d0;
+}
+
 .error-banner {
   background: rgba(233, 69, 96, 0.2);
   color: #ffb3c1;

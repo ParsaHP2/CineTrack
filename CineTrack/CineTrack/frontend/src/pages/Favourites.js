@@ -8,11 +8,12 @@ const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
 
 function FavouriteCard({ favourite, onRemove }) {
   const posterUrl = favourite.posterPath
-    ? `${POSTER_BASE}${favourite.posterPath}`
+    ? favourite.posterPath.startsWith("http")
+      ? favourite.posterPath
+      : `https://image.tmdb.org/t/p/w500${favourite.posterPath}`
     : null;
-  const year = favourite.releaseDate
-    ? favourite.releaseDate.slice(0, 4)
-    : "—";
+
+  const year = favourite.releaseDate ? favourite.releaseDate.slice(0, 4) : "—";
 
   return (
     <div className="movie-card">
@@ -32,9 +33,13 @@ function FavouriteCard({ favourite, onRemove }) {
           ♥
         </button>
       </div>
+
       <div className="movie-info">
         <h3>{favourite.title || "Unknown title"}</h3>
         <p className="movie-year">{year}</p>
+        {favourite.rating !== null && favourite.rating !== undefined && (
+          <p className="movie-rating">⭐ {favourite.rating}/10</p>
+        )}
       </div>
     </div>
   );
@@ -46,11 +51,21 @@ export default function Favourites() {
   const [favourites, setFavourites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
 
-  // [Part 2: Personalized Greeting] jwt-decode extracts username from token (protected view)
   const username = token ? jwtDecode(token).username : null;
 
-  // [Part 2: Authenticated Requests] Authorization header on GET favourites
+  const [newMovie, setNewMovie] = useState({
+    title: "",
+    releaseDate: "",
+    posterPath: "",
+    rating: "",
+  });
+
+  const handleInputChange = (e) => {
+    setNewMovie({ ...newMovie, [e.target.name]: e.target.value });
+  };
+
   useEffect(() => {
     if (!token) return;
     setLoading(true);
@@ -66,7 +81,6 @@ export default function Favourites() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  // [Part 2: Authenticated Requests] Authorization header on DELETE favourite
   const handleRemove = async (favourite) => {
     try {
       await fetch(`${API_BASE}/api/favourites/${favourite.movieId}`, {
@@ -81,7 +95,42 @@ export default function Favourites() {
     }
   };
 
-  // [Part 2: Logout] Clears token from Context/localStorage, redirects to /login
+  const handleAddMovie = async () => {
+    try {
+      // convert rating to number if valid
+      const ratingNum = parseInt(newMovie.rating, 10);
+      const body = {
+        movieId: Date.now(), // unique for custom movies
+        title: newMovie.title,
+        posterPath: newMovie.posterPath,
+        releaseDate: newMovie.releaseDate,
+      };
+      if (!isNaN(ratingNum)) body.rating = ratingNum;
+
+      const response = await fetch(`${API_BASE}/api/favourites`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) throw new Error("Failed to add movie");
+
+      const savedMovie = await response.json();
+
+      setFavourites([...favourites, savedMovie]);
+
+      // Reset form
+      setNewMovie({ title: "", releaseDate: "", posterPath: "", rating: "" });
+      setShowPopup(false);
+    } catch (err) {
+      console.error(err);
+      setError("Could not add movie.");
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
@@ -102,11 +151,7 @@ export default function Favourites() {
             <span>
               Logged in as <strong>{username}</strong>
             </span>
-            <button
-              type="button"
-              className="logout-btn"
-              onClick={handleLogout}
-            >
+            <button type="button" className="logout-btn" onClick={handleLogout}>
               Logout
             </button>
           </div>
@@ -129,12 +174,16 @@ export default function Favourites() {
 
       <main className="content">
         <h2 className="welcome-greeting">My Favourites</h2>
+
+        <button className="add-movie-btn" onClick={() => setShowPopup(true)}>
+          + Add Your Own Movie
+        </button>
+
         {loading ? (
           <p className="loading">Loading favourites…</p>
         ) : favourites.length === 0 ? (
           <p className="section-empty">
-            No favourites yet.{" "}
-            <Link to="/dashboard">Browse movies</Link> to add some!
+            No favourites yet. <Link to="/dashboard">Browse movies</Link> to add some!
           </p>
         ) : (
           <div className="movie-grid">
@@ -148,6 +197,52 @@ export default function Favourites() {
           </div>
         )}
       </main>
+
+      {showPopup && (
+        <div className="popup-overlay">
+          <div className="popup">
+            <h2>Add Your Own Movie</h2>
+
+            <input
+              type="text"
+              name="title"
+              placeholder="Movie Name"
+              value={newMovie.title}
+              onChange={handleInputChange}
+            />
+
+            <input
+              type="date"
+              name="releaseDate"
+              value={newMovie.releaseDate}
+              onChange={handleInputChange}
+            />
+
+            <input
+              type="text"
+              name="posterPath"
+              placeholder="Poster Image URL"
+              value={newMovie.posterPath}
+              onChange={handleInputChange}
+            />
+
+            <input
+              type="number"
+              min="1"
+              max="10"
+              name="rating"
+              placeholder="Personal Rating (1-10)"
+              value={newMovie.rating}
+              onChange={handleInputChange}
+            />
+
+            <div className="popup-buttons">
+              <button onClick={handleAddMovie}>Add Movie</button>
+              <button onClick={() => setShowPopup(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

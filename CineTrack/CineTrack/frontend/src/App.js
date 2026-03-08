@@ -4,6 +4,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import PublicDashboard from "./pages/PublicDashboard"; // guest
 import Favourites from "./pages/Favourites";
 import "./App.css";
 
@@ -16,8 +17,17 @@ function App() {
           {/* [Part 2: Public Routes] /login and /register */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          {/* [Part 2: Protected Route] /favourites - redirects to /login if unauthenticated */}
+          <Route path="/public-dashboard" element={<Dashboard />} />
+          {/* [Part 2: Protected Route] /favourites and /dashboard - redirects to /login if unauthenticated */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/favourites"
             element={

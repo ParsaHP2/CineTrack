@@ -12,7 +12,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // [Part 2: Login Form] POST request to backend, handles errors
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -67,7 +67,8 @@ export default function Login() {
         <button
           type="button"
           className="guest-btn"
-          onClick={() => navigate("/dashboard", { replace: true })}
+          // Clicking "continue as guest" will navigate to the public dashboard without setting a token
+          onClick={() => navigate("/public-dashboard", { replace: true })}
         >
           Continue as guest
         </button>

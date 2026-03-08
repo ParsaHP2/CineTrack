@@ -15,14 +15,20 @@ router.get("/", verifyToken, async (req, res) => {
 
 router.post("/", verifyToken, async (req, res) => {
   try {
-    const { movieId, title, posterPath, releaseDate } = req.body;
+    const { movieId, title, posterPath, releaseDate, rating } = req.body;
     if (!movieId) return res.status(400).json({ message: "movieId required" });
 
     const existing = await Favourite.findOne({
       userId: req.userId,
       movieId: Number(movieId),
     });
+
     if (existing) return res.status(201).json(existing);
+
+    const ratingNum =
+      rating !== undefined && rating !== null && rating !== ""
+        ? Number(rating)
+        : null;
 
     const fav = new Favourite({
       userId: req.userId,
@@ -30,7 +36,9 @@ router.post("/", verifyToken, async (req, res) => {
       title: title || null,
       posterPath: posterPath || null,
       releaseDate: releaseDate || null,
+      rating: ratingNum,
     });
+
     await fav.save();
     res.status(201).json(fav);
   } catch (err) {
