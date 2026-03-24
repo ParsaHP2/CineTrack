@@ -24,6 +24,8 @@ export function AuthProvider({ children }) {
       setUser({
         id: decoded.id,
         username: decoded.username,
+        role: decoded.role || "user",
+        isBanned: Boolean(decoded.isBanned),
       });
     } catch {
       localStorage.removeItem("token");
@@ -47,7 +49,15 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        user,
+        login,
+        logout,
+        isAdmin: user?.role === "admin",
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

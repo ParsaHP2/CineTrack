@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Favourite = require("../models/Favourite");
-const verifyToken = require("../middleware/authMiddleware");
+const { verifyToken } = require("../middleware/authMiddleware");
 
 // [Part 1: Protected Domain Routes] verifyToken applied to GET, POST, DELETE - 401 if no valid token
 router.get("/", verifyToken, async (req, res) => {

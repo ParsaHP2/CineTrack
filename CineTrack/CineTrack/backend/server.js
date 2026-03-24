@@ -5,6 +5,8 @@ const cors = require("cors");
 const authRoutes = require("./routes/auth");
 const movieRoutes = require("./routes/movies");
 const favouriteRoutes = require("./routes/favourites");
+const commentRoutes = require("./routes/comments");
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 const PORT = 5000;
@@ -37,7 +39,9 @@ connectDB().then(() => {
   // routes
   app.use("/api/auth", authRoutes);
   app.use("/api/movies", movieRoutes);
+  app.use("/api/movies", commentRoutes);
   app.use("/api/favourites", favouriteRoutes);
+  app.use("/api/admin", adminRoutes);
 
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

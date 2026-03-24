@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import { useAuth } from "../context/AuthContext";
+import MovieDetailModal from "../components/MovieDetailModal";
 
 const API_BASE = "http://localhost:5000";
 const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
 
-function FavouriteCard({ favourite, onRemove }) {
+function FavouriteCard({ favourite, onRemove, onOpenDetails }) {
   const posterUrl = favourite.posterPath
     ? favourite.posterPath.startsWith("http")
       ? favourite.posterPath
@@ -16,7 +17,18 @@ function FavouriteCard({ favourite, onRemove }) {
   const year = favourite.releaseDate ? favourite.releaseDate.slice(0, 4) : "—";
 
   return (
-    <div className="movie-card">
+    <div
+      className="movie-card movie-card--clickable"
+      tabIndex={0}
+      onClick={() => onOpenDetails?.(favourite)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenDetails?.(favourite);
+        }
+      }}
+      aria-label={`View details: ${favourite.title || "movie"}`}
+    >
       <div className="movie-poster">
         {posterUrl ? (
           <img src={posterUrl} alt={favourite.title} />
@@ -26,7 +38,10 @@ function FavouriteCard({ favourite, onRemove }) {
         <button
           type="button"
           className="favourite-btn is-favourite"
-          onClick={() => onRemove(favourite)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(favourite);
+          }}
           aria-label="Remove from favourites"
           title="Remove from favourites"
         >
@@ -46,12 +61,13 @@ function FavouriteCard({ favourite, onRemove }) {
 }
 
 export default function Favourites() {
-  const { token, logout } = useAuth();
+  const { token, logout, user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [favourites, setFavourites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [detailMovie, setDetailMovie] = useState(null);
 
   const username = token ? jwtDecode(token).username : null;
 
@@ -145,6 +161,7 @@ export default function Favourites() {
           <Link to="/favourites" className="nav-active">
             My Favourites
           </Link>
+          {isAdmin && <Link to="/admin">Admin</Link>}
         </nav>
         <div className="auth-area">
           <div className="user-info">
@@ -192,11 +209,21 @@ export default function Favourites() {
                 key={fav.movieId}
                 favourite={fav}
                 onRemove={handleRemove}
+                onOpenDetails={setDetailMovie}
               />
             ))}
           </div>
         )}
       </main>
+
+      <MovieDetailModal
+        movie={detailMovie}
+        isOpen={detailMovie != null}
+        onClose={() => setDetailMovie(null)}
+        token={token}
+        isLoggedIn={Boolean(token)}
+        user={user}
+      />
 
       {showPopup && (
         <div className="popup-overlay">

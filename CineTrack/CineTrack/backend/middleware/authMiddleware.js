@@ -1,7 +1,8 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 // [Part 1: verifyToken middleware] Rejects with 401 if no valid token in Authorization header
-function verifyToken(req, res, next) {
+async function verifyToken(req, res, next) {
   const token = req.header("Authorization");
 
   if (!token) return res.status(401).json({ error: "Access denied" });
@@ -12,11 +13,34 @@ function verifyToken(req, res, next) {
   }
   try {
     const decoded = jwt.verify(token, secret);
-    req.userId = decoded.id; // Add user ID to request
+    const user = await User.findById(decoded.id).lean();
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+    if (user.isBanned) {
+      return res
+        .status(403)
+        .json({ error: "Your account has been banned. Access denied." });
+    }
+    req.userId = String(user._id);
+    req.user = {
+      id: String(user._id),
+      username: user.username,
+      role: user.role || "user",
+      isBanned: Boolean(user.isBanned),
+    };
+    req.username = user.username;
     next();
   } catch (error) {
     res.status(401).json({ error: "Invalid token" }); // 401 Unauthorized for invalid/expired token
   }
 }
 
-module.exports = verifyToken;
+function requireAdmin(req, res, next) {
+  if (req.user?.role !== "admin") {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+
+module.exports = { verifyToken, requireAdmin };

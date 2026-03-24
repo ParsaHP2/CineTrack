@@ -28,7 +28,8 @@ export default function Login() {
         return;
       }
       login(data.token, data.user);
-      const from = location.state?.from?.pathname || "/dashboard";
+      const from =
+        location.state?.from?.pathname || (data.user?.role === "admin" ? "/admin" : "/dashboard");
       navigate(from, { replace: true });
     } catch (err) {
       setError("Network error. Is the backend running?");

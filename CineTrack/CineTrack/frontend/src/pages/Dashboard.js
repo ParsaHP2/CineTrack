@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import { useAuth } from "../context/AuthContext";
+import MovieDetailModal from "../components/MovieDetailModal";
 
 const API_BASE = "http://localhost:5000";
 const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
 
 //MovieCard
-function MovieCard({ movie, favouriteIds, onToggleFavourite, isLoggedIn }) {
+function MovieCard({ movie, favouriteIds, onToggleFavourite, isLoggedIn, onOpenDetails }) {
   const isFav = favouriteIds.has(movie.id || movie.movieId); // works for TMDB and added movies
   const posterUrl = movie.poster_path
     ? `${POSTER_BASE}${movie.poster_path}`
@@ -19,7 +20,18 @@ function MovieCard({ movie, favouriteIds, onToggleFavourite, isLoggedIn }) {
     : "—";
 
   return (
-    <div className="movie-card">
+    <div
+      className="movie-card movie-card--clickable"
+      tabIndex={0}
+      onClick={() => onOpenDetails?.(movie)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenDetails?.(movie);
+        }
+      }}
+      aria-label={`View details: ${movie.title || "movie"}`}
+    >
       <div className="movie-poster">
         {posterUrl ? (
           <img src={posterUrl} alt={movie.title || "Untitled"} />
@@ -30,7 +42,10 @@ function MovieCard({ movie, favouriteIds, onToggleFavourite, isLoggedIn }) {
           <button
             type="button"
             className={`favourite-btn ${isFav ? "is-favourite" : ""}`} // red if favourite
-            onClick={() => onToggleFavourite(movie)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavourite(movie);
+            }}
             aria-label={isFav ? "Remove from favourites" : "Add to favourites"}
             title={isFav ? "Remove from favourites" : "Add to favourites"}
           >
@@ -49,12 +64,13 @@ function MovieCard({ movie, favouriteIds, onToggleFavourite, isLoggedIn }) {
 
 //Dashboard
 export default function Dashboard() {
-  const { token, user, logout } = useAuth();
+  const { token, user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [movies, setMovies] = useState({ classic: [], modern: [] });
   const [loading, setLoading] = useState(true);
   const [favouriteIds, setFavouriteIds] = useState(new Set());
   const [error, setError] = useState(null);
+  const [detailMovie, setDetailMovie] = useState(null);
 
   const isLoggedIn = Boolean(token);
   const username = isLoggedIn ? jwtDecode(token).username : user?.username ?? null;
@@ -122,7 +138,6 @@ export default function Dashboard() {
             title: movie.title,
             posterPath: movie.poster_path || movie.posterPath || null,
             releaseDate: movie.release_date || movie.releaseDate || null,
-            username,
           }),
         });
         setFavouriteIds((prev) => new Set([...prev, id]));
@@ -148,6 +163,7 @@ export default function Dashboard() {
               Browse
             </Link>
             <Link to="/favourites">My Favourites</Link>
+            {isAdmin && <Link to="/admin">Admin</Link>}
           </nav>
         )}
         <div className="auth-area">
@@ -204,6 +220,7 @@ export default function Dashboard() {
                       favouriteIds={favouriteIds}
                       onToggleFavourite={toggleFavourite}
                       isLoggedIn={isLoggedIn}
+                      onOpenDetails={setDetailMovie}
                     />
                   ))
                 )}
@@ -223,6 +240,7 @@ export default function Dashboard() {
                       favouriteIds={favouriteIds}
                       onToggleFavourite={toggleFavourite}
                       isLoggedIn={isLoggedIn}
+                      onOpenDetails={setDetailMovie}
                     />
                   ))
                 )}
@@ -231,6 +249,15 @@ export default function Dashboard() {
           </>
         )}
       </main>
+
+      <MovieDetailModal
+        movie={detailMovie}
+        isOpen={detailMovie != null}
+        onClose={() => setDetailMovie(null)}
+        token={token}
+        isLoggedIn={isLoggedIn}
+        user={user}
+      />
     </div>
   );
 }

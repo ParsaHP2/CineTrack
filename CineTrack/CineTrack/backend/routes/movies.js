@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-const verifyToken = require("../middleware/authMiddleware");
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const API_KEY = process.env.TMDB_API_KEY;
@@ -17,6 +16,34 @@ async function fetchDiscover(from, to, page = 1) {
   return res.json();
 }
 
+function isReleaseYearInRange(movie, from, to) {
+  const date = String(movie?.release_date || "");
+  const year = Number(date.slice(0, 4));
+  return Number.isFinite(year) && year >= from && year <= to;
+}
+
+async function fetchModernVariety() {
+  const currentYear = new Date().getFullYear();
+  const ranges = [
+    { from: 1961, to: 1979, take: 5 },
+    { from: 1980, to: 1999, take: 5 },
+    { from: 2000, to: 2014, take: 5 },
+    { from: 2015, to: currentYear, take: 5 },
+  ];
+
+  const bucketResults = await Promise.all(
+    ranges.map(async ({ from, to, take }) => {
+      const data = await fetchDiscover(from, to);
+      const valid = (data.results || []).filter((movie) =>
+        isReleaseYearInRange(movie, from, to),
+      );
+      return valid.slice(0, take);
+    }),
+  );
+
+  return bucketResults.flat();
+}
+
 // GET /api/movies/trending -> { classic: [...], modern: [...] }
 router.get("/trending", async (req, res) => {
   if (!API_KEY) {
@@ -25,14 +52,19 @@ router.get("/trending", async (req, res) => {
     });
   }
   try {
-    const [classicRes, modernRes] = await Promise.all([
+    const currentYear = new Date().getFullYear();
+    const [classicRes, modernMovies] = await Promise.all([
       fetchDiscover(1900, 1960),
-      fetchDiscover(1961, 2025),
+      fetchModernVariety(),
     ]);
 
     res.json({
-      classic: classicRes.results || [],
-      modern: modernRes.results || [],
+      classic: (classicRes.results || []).filter((movie) =>
+        isReleaseYearInRange(movie, 1900, 1960),
+      ),
+      modern: modernMovies.filter((movie) =>
+        isReleaseYearInRange(movie, 1961, currentYear),
+      ),
     });
   } catch (err) {
     console.error(err);
@@ -40,31 +72,45 @@ router.get("/trending", async (req, res) => {
   }
 });
 
-router.post("/", verifyToken, async (req, res) => {
+// GET /api/movies/:movieId/details — synopsis & metadata from TMDB (for modal)
+router.get("/:movieId/details", async (req, res) => {
+  const movieId = Number(req.params.movieId);
+  if (!Number.isFinite(movieId) || movieId < 1) {
+    return res.status(400).json({ message: "Invalid movie id" });
+  }
+  if (!API_KEY) {
+    return res.status(503).json({
+      message: "Movie API not configured (TMDB_API_KEY missing)",
+    });
+  }
   try {
-    const { movieId, title, posterPath, releaseDate, rating } = req.body;
-    if (!movieId) return res.status(400).json({ message: "movieId required" });
-
-    const existing = await Favourite.findOne({
-      userId: req.userId,
-      movieId: Number(movieId),
+    const url = `${TMDB_BASE}/movie/${movieId}?api_key=${API_KEY}`;
+    const tmdbRes = await fetch(url);
+    if (tmdbRes.status === 404) {
+      return res.json({
+        notFound: true,
+        title: null,
+        overview: null,
+        poster_path: null,
+        release_date: null,
+      });
+    }
+    if (!tmdbRes.ok) {
+      throw new Error("TMDB request failed");
+    }
+    const data = await tmdbRes.json();
+    res.json({
+      notFound: false,
+      title: data.title,
+      overview: data.overview,
+      poster_path: data.poster_path,
+      release_date: data.release_date,
+      vote_average: data.vote_average,
+      runtime: data.runtime,
     });
-
-    if (existing) return res.status(201).json(existing);
-
-    const fav = new Favourite({
-      userId: req.userId,
-      movieId: Number(movieId),
-      title: title || null,
-      posterPath: posterPath || null,
-      releaseDate: releaseDate || null,
-      rating: rating !== undefined ? Number(rating) : null,
-    });
-
-    await fav.save();
-    res.status(201).json(fav);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error(err);
+    res.status(502).json({ message: "Failed to fetch movie details" });
   }
 });
 
