@@ -5,31 +5,41 @@ import { jwtDecode } from "jwt-decode";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const [isHydrating, setIsHydrating] = useState(true);
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
 
   // [Part 2: AuthContext] Checks localStorage on app load so user stays logged in after refresh
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
-    if (!storedToken) return;
+    if (!storedToken) {
+      setIsHydrating(false);
+      return;
+    }
     try {
       const decoded = jwtDecode(storedToken);
       // Basic expiry check (jwt-decode doesn't validate, just decodes)
       if (decoded.exp && decoded.exp * 1000 < Date.now()) {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        return;
+        setToken(null);
+        setUser(null);
+      } else {
+        setToken(storedToken);
+        setUser({
+          id: decoded.id,
+          username: decoded.username,
+          role: decoded.role || "user",
+          isBanned: Boolean(decoded.isBanned),
+        });
       }
-      setToken(storedToken);
-      setUser({
-        id: decoded.id,
-        username: decoded.username,
-        role: decoded.role || "user",
-        isBanned: Boolean(decoded.isBanned),
-      });
     } catch {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+      setToken(null);
+      setUser(null);
+    } finally {
+      setIsHydrating(false);
     }
   }, []);
 
@@ -51,6 +61,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider
       value={{
+        isHydrating,
         token,
         user,
         login,
