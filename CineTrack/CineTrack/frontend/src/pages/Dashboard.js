@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import { useAuth } from "../context/AuthContext";
 import MovieDetailModal from "../components/MovieDetailModal";
@@ -8,7 +8,7 @@ const API_BASE = "http://localhost:5000";
 const POSTER_BASE = "https://image.tmdb.org/t/p/w500";
 
 //MovieCard
-function MovieCard({ movie, favouriteIds, onToggleFavourite, isLoggedIn, onOpenDetails }) {
+function MovieCard({ movie, favouriteIds, isLoggedIn, onOpenDetails, onOpenRating, onToggleFavourite }) {
   const isFav = favouriteIds.has(movie.id || movie.movieId); // works for TMDB and added movies
   const posterUrl = movie.poster_path
     ? `${POSTER_BASE}${movie.poster_path}`
@@ -44,7 +44,12 @@ function MovieCard({ movie, favouriteIds, onToggleFavourite, isLoggedIn, onOpenD
             className={`favourite-btn ${isFav ? "is-favourite" : ""}`} // red if favourite
             onClick={(e) => {
               e.stopPropagation();
-              onToggleFavourite(movie);
+
+              if (isFav) {
+                onToggleFavourite(movie); // remove
+              } else {
+                onOpenRating(movie); // open popup
+              }
             }}
             aria-label={isFav ? "Remove from favourites" : "Add to favourites"}
             title={isFav ? "Remove from favourites" : "Add to favourites"}
@@ -56,7 +61,14 @@ function MovieCard({ movie, favouriteIds, onToggleFavourite, isLoggedIn, onOpenD
       <div className="movie-info">
         <h3>{movie.title || "Untitled"}</h3>
         <p className="movie-year">{year}</p>
-        {movie.username && <p className="movie-username">Added by: {movie.username}</p>}
+        {movie.rating && (
+          <p className="movie-rating">⭐ {movie.rating}/10</p>
+        )}
+        {movie.username && (
+          <p className="movie-username">
+            Added by: <span>{movie.username}</span>
+          </p>
+        )}
       </div>
     </div>
   );
@@ -66,11 +78,15 @@ function MovieCard({ movie, favouriteIds, onToggleFavourite, isLoggedIn, onOpenD
 export default function Dashboard() {
   const { token, user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [movies, setMovies] = useState({ classic: [], modern: [] });
   const [loading, setLoading] = useState(true);
   const [favouriteIds, setFavouriteIds] = useState(new Set());
   const [error, setError] = useState(null);
   const [detailMovie, setDetailMovie] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [ratingMovie, setRatingMovie] = useState(null);
+  const [ratingValue, setRatingValue] = useState("");
 
   const isLoggedIn = Boolean(token);
   const username = isLoggedIn ? jwtDecode(token).username : user?.username ?? null;
@@ -89,21 +105,34 @@ export default function Dashboard() {
 
     Promise.all([trendingPromise, favouritesPromise])
       .then(([trendingData, favouriteData]) => {
-        // Split favourites into classic/modern by year
-        const classicFavourites = [];
-        const modernFavourites = [];
-        (favouriteData || []).forEach((movie) => {
-          const year = Number(movie.releaseDate?.slice(0, 4));
-          if (year && year <= 1960) classicFavourites.push(movie);
-          else modernFavourites.push(movie);
+
+        const favMap = new Map();
+        (favouriteData || []).forEach((fav) => {
+          favMap.set(fav.movieId, fav);
         });
+
+        const mergeMovies = (movies = []) =>
+          movies.map((movie) => {
+            const id = movie.id || movie.movieId;
+
+            if (favMap.has(id)) {
+              const fav = favMap.get(id);
+
+              return {
+                ...movie,
+                ...fav,
+                username: movie.username || fav.username, 
+              };
+            }
+
+            return movie;
+          });
 
         setMovies({
-          classic: [...(trendingData.classic || []), ...classicFavourites],
-          modern: [...(trendingData.modern || []), ...modernFavourites],
+          classic: mergeMovies(trendingData.classic),
+          modern: mergeMovies(trendingData.modern),
         });
 
-        // set favourite IDs
         const favIds = new Set((favouriteData || []).map((f) => f.movieId));
         setFavouriteIds(favIds);
       })
@@ -113,7 +142,7 @@ export default function Dashboard() {
         setFavouriteIds(new Set());
       })
       .finally(() => setLoading(false));
-  }, [token]);
+      }, [token, location.pathname]);
 
   //Toggle favourite
   const toggleFavourite = async (movie) => {
@@ -152,6 +181,14 @@ export default function Dashboard() {
     logout();
     navigate("/login", { replace: true });
   };
+
+  const filteredClassic = movies.classic.filter((movie) =>
+      (movie.title || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const filteredModern = movies.modern.filter((movie) =>
+      (movie.title || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   return (
     <div className="page-container">
@@ -203,6 +240,14 @@ export default function Dashboard() {
           {isLoggedIn ? `Welcome, ${username}!` : "Browse movies"}
         </h2>
 
+        <input
+          type="text"
+          placeholder="Search movies..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="search-bar"
+        />
+
         {loading ? (
           <p className="loading">Loading movies…</p>
         ) : (
@@ -210,10 +255,10 @@ export default function Dashboard() {
             <section className="movie-section">
               <h2>Classic (1900 – 1960)</h2>
               <div className="movie-grid">
-                {movies.classic.length === 0 ? (
+                {filteredClassic.length === 0 ? (
                   <p className="section-empty">No movies in this range.</p>
                 ) : (
-                  movies.classic.map((movie) => (
+                  filteredClassic.map((movie) => (
                     <MovieCard
                       key={movie.id || movie.movieId}
                       movie={movie}
@@ -221,6 +266,10 @@ export default function Dashboard() {
                       onToggleFavourite={toggleFavourite}
                       isLoggedIn={isLoggedIn}
                       onOpenDetails={setDetailMovie}
+                      onOpenRating={(movie) => {
+                        setRatingMovie(movie);
+                        setRatingValue(movie.rating || "");
+                      }}
                     />
                   ))
                 )}
@@ -230,10 +279,10 @@ export default function Dashboard() {
             <section className="movie-section">
               <h2>Modern (1961 – 2025)</h2>
               <div className="movie-grid">
-                {movies.modern.length === 0 ? (
+                {filteredModern.length === 0 ? (
                   <p className="section-empty">No movies in this range.</p>
                 ) : (
-                  movies.modern.map((movie) => (
+                  filteredModern.map((movie) => (
                     <MovieCard
                       key={movie.id || movie.movieId}
                       movie={movie}
@@ -241,6 +290,10 @@ export default function Dashboard() {
                       onToggleFavourite={toggleFavourite}
                       isLoggedIn={isLoggedIn}
                       onOpenDetails={setDetailMovie}
+                      onOpenRating={(movie) => {
+                        setRatingMovie(movie);
+                        setRatingValue(movie.rating || "");
+                      }}
                     />
                   ))
                 )}
@@ -258,6 +311,106 @@ export default function Dashboard() {
         isLoggedIn={isLoggedIn}
         user={user}
       />
+      {ratingMovie && (
+        <div className="popup-overlay">
+          <div className="popup">
+            <h2>Rate "{ratingMovie.title}"</h2>
+
+            <input
+              type="number"
+              min="1"
+              max="10"
+              step="1"
+              value={ratingValue}
+              onChange={(e) => {
+                let val = e.target.value;
+
+                if (val === "") {
+                  setRatingValue("");
+                  return;
+                }
+
+                val = Number(val);
+
+                // clamp between 1–10
+                if (val < 1) val = 1;
+                if (val > 10) val = 10;
+
+                setRatingValue(val);
+              }}
+              placeholder="Enter rating (1–10)"
+            />
+
+            <div className="popup-buttons">
+              <button
+                onClick={async () => {
+                  const id = ratingMovie.id || ratingMovie.movieId;
+
+                  const numericRating = Number(ratingValue);
+
+                  if (!numericRating || numericRating < 1 || numericRating > 10) {
+                    alert("Rating must be between 1 and 10");
+                    return;
+                  }
+
+                  try {
+                    await fetch(`${API_BASE}/api/favourites`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: token,
+                      },
+                      body: JSON.stringify({
+                        movieId: id,
+                        title: ratingMovie.title,
+                        posterPath:
+                          ratingMovie.poster_path || ratingMovie.posterPath,
+                        releaseDate:
+                          ratingMovie.release_date || ratingMovie.releaseDate,
+                        rating: ratingValue,
+                      }),
+                    });
+
+                    // update favourites locally
+                    setFavouriteIds((prev) => new Set([...prev, id]));
+
+                    // optionally update movies with rating
+                    setMovies((prev) => ({
+                      classic: prev.classic.map((m) =>
+                        (m.id || m.movieId) === id
+                          ? { ...m, rating: ratingValue }
+                          : m
+                      ),
+                      modern: prev.modern.map((m) =>
+                        (m.id || m.movieId) === id
+                          ? { ...m, rating: ratingValue }
+                          : m
+                      ),
+                    }));
+
+                    setRatingMovie(null);
+                    setRatingValue("");
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }}
+              >
+                Save
+              </button>
+
+              <button
+                onClick={() => {
+                  setRatingMovie(null);
+                  setRatingValue("");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -8,6 +8,15 @@ html {
   color: #e8e8e8;
 }
 
+.search-bar {
+  width: 100%;
+  padding: 12px;
+  margin: 20px 0;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
 .page-container {
   max-width: 1400px;
   margin: 0 auto;
@@ -767,6 +776,16 @@ color:#b8b8d0;
   color: #8b8ba8;
 }
 
+.movie-username {
+  font-size: 0.85rem;
+  color: #888;
+  margin-top: 4px;
+}
+
+.movie-username span {
+  font-weight: 600; 
+  color: #1e90ff;
+}
 /* Auth pages (Login / Register) */
 .auth-page {
   min-height: 100vh;

@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const Favourite = require("../models/Favourite");
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const API_KEY = process.env.TMDB_API_KEY;
@@ -51,24 +52,51 @@ router.get("/trending", async (req, res) => {
       message: "Movie API not configured (TMDB_API_KEY missing)",
     });
   }
+
   try {
     const currentYear = new Date().getFullYear();
-    const [classicRes, modernMovies] = await Promise.all([
+
+    const [classicRes, modernMovies, userMovies] = await Promise.all([
       fetchDiscover(1900, 1960),
       fetchModernVariety(),
+      Favourite.find().populate("userId", "username").lean()
     ]);
 
+    const formattedUserMovies = userMovies.map((movie) => ({
+      movieId: movie.movieId,
+      title: movie.title,
+      posterPath: movie.posterPath,
+      releaseDate: movie.releaseDate,
+      rating: movie.rating,
+      username: movie.userId?.username || "Unknown",
+    }));
+
+    const userClassic = [];
+    const userModern = [];
+
+    formattedUserMovies.forEach((movie) => {
+      const year = Number(movie.releaseDate?.slice(0, 4));
+      if (year && year <= 1960) userClassic.push(movie);
+      else userModern.push(movie);
+    });
+
     res.json({
-      classic: (classicRes.results || []).filter((movie) =>
-        isReleaseYearInRange(movie, 1900, 1960),
-      ),
-      modern: modernMovies.filter((movie) =>
-        isReleaseYearInRange(movie, 1961, currentYear),
-      ),
+      classic: [
+        ...(classicRes.results || []).filter((movie) =>
+          isReleaseYearInRange(movie, 1900, 1960)
+        ),
+        ...userClassic, 
+      ],
+      modern: [
+        ...modernMovies.filter((movie) =>
+          isReleaseYearInRange(movie, 1961, currentYear)
+        ),
+        ...userModern, 
+      ],
     });
   } catch (err) {
     console.error(err);
-    res.status(502).json({ message: "Failed to fetch movies from TMDB" });
+    res.status(502).json({ message: "Failed to fetch movies" });
   }
 });
 
