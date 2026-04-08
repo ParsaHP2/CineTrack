@@ -3,7 +3,7 @@ const router = express.Router();
 const Favourite = require("../models/Favourite");
 const { verifyToken } = require("../middleware/authMiddleware");
 
-// GET /api/favourites
+// Member endpoints: each query is scoped to the logged-in user.
 router.get("/", verifyToken, async (req, res) => {
   try {
     const list = await Favourite.find({ userId: req.userId }).lean();
@@ -13,7 +13,7 @@ router.get("/", verifyToken, async (req, res) => {
   }
 });
 
-// POST /api/favourites
+// Adds/updates a favourite for the current member only.
 router.post("/", verifyToken, async (req, res) => {
   try {
     const { movieId, title, posterPath, releaseDate, rating } = req.body;
@@ -59,7 +59,7 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 
-// DELETE /api/favourites/:movieId
+// Removes a favourite from the current member's list.
 router.delete("/:movieId", verifyToken, async (req, res) => {
   try {
     const movieId = Number(req.params.movieId);

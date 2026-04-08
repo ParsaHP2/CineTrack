@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-// [Part 1: User Model] Mongoose User model with username and password (assignment requirement)
+// Schema reference for report visuals: authentication + authorization fields.
 const UserSchema = new mongoose.Schema({
   username: {
     type: String,

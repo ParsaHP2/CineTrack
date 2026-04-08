@@ -4,7 +4,7 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// [Part 1: POST /register] Accepts credentials, hashes password with bcryptjs, saves user
+// Visitor endpoint: creates a new Member account.
 router.post("/register", async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -28,7 +28,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// [Part 1: POST /login] Verifies credentials, returns signed JWT with user's DB ID and username in payload
+// Visitor endpoint: returns JWT used for Member/Admin access.
 router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;

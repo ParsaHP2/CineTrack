@@ -3,6 +3,8 @@ const router = express.Router();
 const User = require("../models/User");
 const { verifyToken, requireAdmin } = require("../middleware/authMiddleware");
 
+// Admin-only endpoints for user moderation.
+
 router.get("/users", verifyToken, requireAdmin, async (req, res) => {
   try {
     const users = await User.find({}, { password: 0 }).sort({ username: 1 }).lean();

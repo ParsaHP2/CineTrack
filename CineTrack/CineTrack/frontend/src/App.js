@@ -12,14 +12,14 @@ import "./App.css";
 function App() {
   return (
     <AuthProvider>
-      {/* [Part 2: Router] react-router-dom with public and protected routes */}
+      {/* Routing map used in report: Visitor vs Member vs Admin pages */}
       <BrowserRouter>
         <Routes>
-          {/* [Part 2: Public Routes] /login and /register */}
+          {/* Visitor (public) routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/public-dashboard" element={<Dashboard />} />
-          {/* [Part 2: Protected Route] /favourites and /dashboard - redirects to /login if unauthenticated */}
+          {/* Member routes: require valid token */}
           <Route
             path="/dashboard"
             element={
@@ -37,6 +37,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Admin route: token + admin role */}
           <Route
             path="/admin"
             element={

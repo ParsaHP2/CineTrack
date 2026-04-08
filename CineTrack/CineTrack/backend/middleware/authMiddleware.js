@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-// [Part 1: verifyToken middleware] Rejects with 401 if no valid token in Authorization header
+// Member gate: validates JWT and loads fresh user role/status from DB.
 async function verifyToken(req, res, next) {
   const token = req.header("Authorization");
 
@@ -37,6 +37,7 @@ async function verifyToken(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
+  // Admin gate: only users with role=admin can continue.
   if (req.user?.role !== "admin") {
     return res.status(403).json({ error: "Admin access required" });
   }
